@@ -111,7 +111,7 @@ export default function AdminPage() {
 
   const handleDeleteJD = async (jdId: string, jdTitle: string) => {
     const confirmDelete = window.confirm(
-      `Kya aap sach mein Open JD "${jdTitle}" (${jdId}) ko delete karna chahte hain? Yeh portal se permanently remove ho jayega.`
+      `Are you sure you want to delete Open JD "${jdTitle}" (${jdId})? It will be permanently removed from the portal.`
     );
     if (!confirmDelete) return;
 
@@ -174,7 +174,7 @@ export default function AdminPage() {
   const handleBulkDelete = async () => {
     if (selectedCandIds.length === 0) return;
     const confirmBulk = window.confirm(
-      `Kya aap sach mein in ${selectedCandIds.length} candidates ko permanently delete karna chahte hain?`
+      `Are you sure you want to permanently delete these ${selectedCandIds.length} candidate profiles?`
     );
     if (!confirmBulk) return;
 
@@ -320,7 +320,7 @@ export default function AdminPage() {
   // Delete candidate with user confirmation
   const handleDeleteCandidate = async (candidateId: string, candidateName: string) => {
     const confirmDelete = window.confirm(
-      `Kya aap sach mein candidate "${candidateName}" ko delete karna chahte hain? Yeh profile portal se permanently remove ho jayegi.`
+      `Are you sure you want to delete candidate "${candidateName}"? This profile will be permanently removed from the portal.`
     );
     if (!confirmDelete) return;
 
@@ -460,7 +460,7 @@ export default function AdminPage() {
             Recruiter & Open JD Master Dashboard
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Sabhi recruiters ki candidate submissions, Open JDs inventory, aur pipeline progress ek jagah manage karein.
+            Manage candidate submissions, Open JDs inventory, and pipeline progress across all recruiters in one place.
           </p>
         </div>
 

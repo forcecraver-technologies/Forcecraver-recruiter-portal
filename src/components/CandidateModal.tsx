@@ -144,11 +144,11 @@ export default function CandidateModal({
     setSuccessMessage("");
 
     if (!selectedJdId) {
-      setErrorMessage("Kripya candidate ke liye Open JD select karein.");
+      setErrorMessage("Please select an Open JD for the candidate.");
       return;
     }
     if (!recruiterName.trim()) {
-      setErrorMessage("Kripya apna Recruiter Name enter karein.");
+      setErrorMessage("Please enter your Recruiter Name.");
       return;
     }
 
@@ -201,7 +201,7 @@ export default function CandidateModal({
               <span>Map Candidate Profile to Open JD</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Candidate submit karein aur active Open JD ke sath instant map karein.
+              Submit candidate profile and map instantly to an active Open JD.
             </p>
           </div>
           <button
@@ -291,15 +291,15 @@ export default function CandidateModal({
                 </datalist>
                 {isMaster ? (
                   <span className="text-[10px] text-indigo-600 mt-1 block">
-                    Master Access: Aap kisi bhi recruiter ka naam khud se type ya assign kar sakte hain.
+                    Master Access: You can manually type or assign any recruiter name.
                   </span>
                 ) : loggedInUser ? (
                   <span className="text-[10px] text-slate-500 mt-1 block">
-                    Candidate automatically aapki profile (<strong>{loggedInUser.name}</strong>) ke sath map hoga.
+                    Candidate will automatically be mapped to your profile (<strong>{loggedInUser.name}</strong>).
                   </span>
                 ) : (
                   <span className="text-[10px] text-slate-500 mt-1 block">
-                    Aap apna naam khud enter kar sakte hain.
+                    You can enter your recruiter name.
                   </span>
                 )}
               </div>
@@ -582,12 +582,12 @@ export default function CandidateModal({
                   {formData.screeningStatus === "Good" || formData.screeningStatus === "Average" ? (
                     <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-center gap-1.5 w-full">
                       <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span><strong>Interview Portal Sync:</strong> Yeh candidate Interview Schedule System me live show hoga.</span>
+                      <span><strong>Interview Portal Sync:</strong> This candidate will be visible live in the Interview Scheduling System.</span>
                     </div>
                   ) : (
                     <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-[11px] flex items-center gap-1.5 w-full">
                       <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span>Interview Portal me sirf <strong>Good</strong> ya <strong>Average</strong> candidates show hote hain.</span>
+                      <span>Only candidates with status <strong>Good</strong> or <strong>Average</strong> appear in the Interview Portal.</span>
                     </div>
                   )}
                 </div>

@@ -146,7 +146,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Aap sirf apne dale huye Open JDs hi update ya modify kar sakte hain.",
+          error: "You can only update Job Descriptions created by yourself.",
         },
         { status: 403 }
       );
@@ -206,7 +206,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Aap sirf apne dale huye Open JDs hi remove/delete kar sakte hain.",
+          error: "You can only delete Job Descriptions created by yourself.",
         },
         { status: 403 }
       );

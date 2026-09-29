@@ -69,7 +69,7 @@ export default function HomePage() {
 
   const handleDeleteCandidate = async (candidateId: string, candidateName: string) => {
     const confirmDelete = window.confirm(
-      `Kya aap sach mein candidate "${candidateName}" ko delete karna chahte hain? Yeh profile portal se permanently remove ho jayegi.`
+      `Are you sure you want to delete candidate "${candidateName}"? This profile will be permanently removed from the portal.`
     );
     if (!confirmDelete) return;
 
@@ -190,8 +190,8 @@ export default function HomePage() {
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
             {isPortalManager
-              ? "Portal Manager View: Sabhi recruiters dwara submit kiye gaye candidates yahan live monitor aur manage ho rahe hain."
-              : `Aapke dwara (${currentUser?.name || "HR Recruiter"}) open JDs ke liye submit kiye gaye candidates yahan show ho rahe hain. Koi doosra recruiter aapka candidate data nahi dekh sakta.`}
+              ? "Portal Manager View: Candidate profiles submitted across all recruiters are monitored and managed live here."
+              : `Candidate profiles submitted by you (${currentUser?.name || "HR Recruiter"}) for active Open JDs are shown here.`}
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -393,9 +393,9 @@ export default function HomePage() {
         ) : filteredCandidates.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-slate-200 p-8 shadow-2xs">
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-slate-800">Abhi tak koi candidate match nahi hua</h3>
+            <h3 className="text-base font-semibold text-slate-800">No matching candidate profiles found</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Aapki recruiter team ne jo candidates submit kiye hain wo yahan card form me dikhenge.
+              Candidates submitted by your recruitment team will appear here in card view.
             </p>
             <button
               onClick={() => setShowAddCandidateModal(true)}

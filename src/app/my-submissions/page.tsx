@@ -122,7 +122,7 @@ export default function MySubmissionsPage() {
 
   const handleDeleteCandidate = async (candidateId: string, candidateName: string) => {
     const confirmDelete = window.confirm(
-      `Kya aap sach mein candidate "${candidateName}" ko delete karna chahte hain? Yeh profile portal se permanently remove ho jayegi.`
+      `Are you sure you want to delete candidate "${candidateName}"? This profile will be permanently removed from the portal.`
     );
     if (!confirmDelete) return;
 
@@ -182,7 +182,7 @@ export default function MySubmissionsPage() {
             Recruiter Candidate Pipeline
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Apne dwara submit kiye gaye candidates ka status, AI skill match, interview schedule aur assessment feedback track karein.
+            Track candidate submission status, AI skill match, interview schedules, and evaluation feedback.
           </p>
         </div>
 
@@ -280,7 +280,7 @@ export default function MySubmissionsPage() {
             <UserCheck className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <h3 className="text-sm font-semibold text-slate-800">No candidate submissions found</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-              Aapne is filter me abhi tak candidate submit nahi kiya hai. &ldquo;Map New Candidate&rdquo; button se candidate add karein.
+              No candidate submissions found for the selected filter. Click &ldquo;Map New Candidate&rdquo; to add a candidate.
             </p>
           </div>
         ) : (

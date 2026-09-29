@@ -244,10 +244,14 @@ export async function updateJD(
 }
 
 export async function deleteJD(id: string): Promise<boolean> {
+  let pgSuccess = false;
   const pool = getPgPool();
   if (pool) {
     try {
-      await pool.query(`DELETE FROM jobs WHERE id = $1`, [id]);
+      const res = await pool.query(`DELETE FROM jobs WHERE id = $1`, [id]);
+      if ((res.rowCount ?? 0) > 0) {
+        pgSuccess = true;
+      }
     } catch (err) {
       console.warn("PostgreSQL deleteJD failed:", err);
     }
@@ -255,10 +259,15 @@ export async function deleteJD(id: string): Promise<boolean> {
 
   const jds = await readJsonFile<JobDescription[]>(JDS_FILE, []);
   const filtered = jds.filter((j) => j.id !== id);
-  if (filtered.length === jds.length) return false;
+  const jsonDeleted = filtered.length !== jds.length;
+  if (jsonDeleted) {
+    await writeJsonFile(JDS_FILE, filtered);
+  }
 
-  await writeJsonFile(JDS_FILE, filtered);
-  return true;
+  if (pool) {
+    return pgSuccess || jsonDeleted;
+  }
+  return jsonDeleted;
 }
 
 // Recruiters API helpers: allows recruiters to add their own name dynamically
@@ -677,10 +686,14 @@ export async function updateCandidate(
 }
 
 export async function deleteCandidate(id: string): Promise<boolean> {
+  let pgSuccess = false;
   const pool = getPgPool();
   if (pool) {
     try {
-      await pool.query(`DELETE FROM candidates WHERE id = $1`, [id]);
+      const res = await pool.query(`DELETE FROM candidates WHERE id = $1`, [id]);
+      if ((res.rowCount ?? 0) > 0) {
+        pgSuccess = true;
+      }
     } catch (err) {
       console.warn("PostgreSQL deleteCandidate failed:", err);
     }
@@ -688,10 +701,15 @@ export async function deleteCandidate(id: string): Promise<boolean> {
 
   const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
   const filtered = candidates.filter((c) => c.id !== id);
-  if (filtered.length === candidates.length) return false;
+  const jsonDeleted = filtered.length !== candidates.length;
+  if (jsonDeleted) {
+    await writeJsonFile(CANDIDATES_FILE, filtered);
+  }
 
-  await writeJsonFile(CANDIDATES_FILE, filtered);
-  return true;
+  if (pool) {
+    return pgSuccess || jsonDeleted;
+  }
+  return jsonDeleted;
 }
 
 // Dashboard KPIs

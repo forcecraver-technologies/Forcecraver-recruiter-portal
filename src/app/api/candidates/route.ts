@@ -260,7 +260,7 @@ export async function PATCH(req: NextRequest) {
           return NextResponse.json(
             {
               success: false,
-              error: "Aap kisi doosre recruiter ka candidate data edit nahi kar sakte.",
+              error: "You cannot edit candidate profiles submitted by another recruiter.",
             },
             { status: 403 }
           );
@@ -354,7 +354,7 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: "Aap kisi doosre recruiter ka candidate delete nahi kar sakte.",
+            error: "You cannot delete candidate profiles submitted by another recruiter.",
           },
           { status: 403 }
         );

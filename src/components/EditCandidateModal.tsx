@@ -102,11 +102,11 @@ export default function EditCandidateModal({
     setSuccessMessage("");
 
     if (!formData.fullName.trim() || !formData.email.trim()) {
-      setErrorMessage("Full Name aur Email zaroori hain.");
+      setErrorMessage("Full Name and Email are required.");
       return;
     }
     if (!recruiterName.trim()) {
-      setErrorMessage("Recruiter Name zaroori hai.");
+      setErrorMessage("Recruiter Name is required.");
       return;
     }
 
@@ -158,7 +158,7 @@ export default function EditCandidateModal({
                 </span>
               </div>
               <p className="text-xs text-indigo-200">
-                Admin Panel se candidate ki details, CTC aur mapped JD modify karein
+                Modify candidate details, CTC, and mapped Open JD from Admin Panel
               </p>
             </div>
           </div>
@@ -479,12 +479,12 @@ export default function EditCandidateModal({
                   {formData.screeningStatus === "Good" || formData.screeningStatus === "Average" ? (
                     <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-center gap-1.5 w-full">
                       <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span><strong>Interview Portal Sync:</strong> Yeh candidate Interview Schedule System me live show hoga.</span>
+                      <span><strong>Interview Portal Sync:</strong> This candidate will be visible live in the Interview Scheduling System.</span>
                     </div>
                   ) : (
                     <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-[11px] flex items-center gap-1.5 w-full">
                       <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span>Interview Portal me sirf <strong>Good</strong> ya <strong>Average</strong> candidates show hote hain.</span>
+                      <span>Only candidates with status <strong>Good</strong> or <strong>Average</strong> appear in the Interview Portal.</span>
                     </div>
                   )}
                 </div>
