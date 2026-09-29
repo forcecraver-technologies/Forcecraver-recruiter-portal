@@ -14,15 +14,21 @@ async function readJsonFile<T>(filePath: string, defaultData: T): Promise<T> {
     const data = await fs.readFile(filePath, "utf-8");
     return JSON.parse(data) as T;
   } catch {
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, JSON.stringify(defaultData, null, 2), "utf-8");
+    try {
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, JSON.stringify(defaultData, null, 2), "utf-8");
+    } catch {}
     return defaultData;
   }
 }
 
 async function writeJsonFile<T>(filePath: string, data: T): Promise<void> {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+  try {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    // Gracefully handle read-only environments (Vercel serverless)
+  }
 }
 
 // Convert PostgreSQL job row into JobDescription interface
@@ -118,9 +124,7 @@ export async function getJDs(statusFilter?: string): Promise<JobDescription[]> {
       query += ` ORDER BY posted_date DESC, created_at DESC LIMIT 150`;
 
       const result = await pool.query(query, values);
-      if (result.rows && result.rows.length > 0) {
-        return result.rows.map(mapPgJobToJD);
-      }
+      return (result.rows || []).map(mapPgJobToJD);
     } catch (pgErr) {
       console.warn("Direct PostgreSQL fetch failed, falling back to local dataset:", pgErr);
     }
@@ -389,44 +393,42 @@ export async function getCandidates(filters?: {
         ORDER BY created_at DESC
       `;
       const res = await pool.query(query);
-      if (res.rows && res.rows.length > 0) {
-        let list = res.rows.map(mapPgCandidateToCandidate);
+      let list = (res.rows || []).map(mapPgCandidateToCandidate);
 
-        if (filters?.recruiterId && filters.recruiterId !== "All") {
-          list = list.filter((c) => c.recruiterId === filters.recruiterId);
-        }
-        if (filters?.recruiterName && filters.recruiterName !== "All") {
-          list = list.filter(
-            (c) => c.recruiterName.toLowerCase() === filters.recruiterName?.toLowerCase()
-          );
-        }
-        if (filters?.jdId && filters.jdId !== "All") {
-          list = list.filter((c) => c.jdId === filters.jdId);
-        }
-        if (filters?.status && filters.status !== "All") {
-          list = list.filter(
-            (c) => c.status.toLowerCase() === filters.status?.toLowerCase()
-          );
-        }
-        if (filters?.screeningStatus && filters.screeningStatus !== "All") {
-          list = list.filter(
-            (c) => c.screeningStatus.toLowerCase() === filters.screeningStatus?.toLowerCase()
-          );
-        }
-        if (filters?.search) {
-          const q = filters.search.toLowerCase();
-          list = list.filter(
-            (c) =>
-              c.fullName.toLowerCase().includes(q) ||
-              c.email.toLowerCase().includes(q) ||
-              c.phone.includes(q) ||
-              c.currentCompany.toLowerCase().includes(q) ||
-              c.recruiterName.toLowerCase().includes(q) ||
-              c.skills.some((s) => s.toLowerCase().includes(q))
-          );
-        }
-        return list;
+      if (filters?.recruiterId && filters.recruiterId !== "All") {
+        list = list.filter((c) => c.recruiterId === filters.recruiterId);
       }
+      if (filters?.recruiterName && filters.recruiterName !== "All") {
+        list = list.filter(
+          (c) => c.recruiterName.toLowerCase() === filters.recruiterName?.toLowerCase()
+        );
+      }
+      if (filters?.jdId && filters.jdId !== "All") {
+        list = list.filter((c) => c.jdId === filters.jdId);
+      }
+      if (filters?.status && filters.status !== "All") {
+        list = list.filter(
+          (c) => c.status.toLowerCase() === filters.status?.toLowerCase()
+        );
+      }
+      if (filters?.screeningStatus && filters.screeningStatus !== "All") {
+        list = list.filter(
+          (c) => c.screeningStatus.toLowerCase() === filters.screeningStatus?.toLowerCase()
+        );
+      }
+      if (filters?.search) {
+        const q = filters.search.toLowerCase();
+        list = list.filter(
+          (c) =>
+            c.fullName.toLowerCase().includes(q) ||
+            c.email.toLowerCase().includes(q) ||
+            c.phone.includes(q) ||
+            c.currentCompany.toLowerCase().includes(q) ||
+            c.recruiterName.toLowerCase().includes(q) ||
+            c.skills.some((s) => s.toLowerCase().includes(q))
+        );
+      }
+      return list;
     } catch (pgErr) {
       console.warn("PostgreSQL getCandidates failed, fallback to local store:", pgErr);
     }
@@ -690,6 +692,9 @@ export async function deleteCandidate(id: string): Promise<boolean> {
   const pool = getPgPool();
   if (pool) {
     try {
+      try {
+        await pool.query(`DELETE FROM interviews WHERE candidate_id = $1`, [id]);
+      } catch {}
       const res = await pool.query(`DELETE FROM candidates WHERE id = $1`, [id]);
       if ((res.rowCount ?? 0) > 0) {
         pgSuccess = true;
@@ -699,12 +704,15 @@ export async function deleteCandidate(id: string): Promise<boolean> {
     }
   }
 
-  const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
-  const filtered = candidates.filter((c) => c.id !== id);
-  const jsonDeleted = filtered.length !== candidates.length;
-  if (jsonDeleted) {
-    await writeJsonFile(CANDIDATES_FILE, filtered);
-  }
+  let jsonDeleted = false;
+  try {
+    const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
+    const filtered = candidates.filter((c) => c.id !== id);
+    jsonDeleted = filtered.length !== candidates.length;
+    if (jsonDeleted) {
+      await writeJsonFile(CANDIDATES_FILE, filtered);
+    }
+  } catch {}
 
   if (pool) {
     return pgSuccess || jsonDeleted;
