@@ -13,9 +13,12 @@ interface SendOtpResult {
 export async function sendOtpEmail(
   toEmail: string,
   otp: string,
-  name?: string
+  name?: string,
+  type: "setup" | "reset" | "login" = "setup"
 ): Promise<SendOtpResult> {
-  const recipientName = name || "Recruiter";
+  const recipientName = (name || "Recruiter").trim();
+  const isReset = type === "reset";
+  const isSetup = type === "setup";
 
   // Check SMTP configuration from environment variables
   const smtpHost = process.env.SMTP_HOST || "smtp.hostinger.com";
@@ -23,6 +26,24 @@ export async function sendOtpEmail(
   const smtpUser = process.env.SMTP_USER || "";
   const smtpPass = process.env.SMTP_PASS || "";
   const fromEmail = process.env.EMAIL_FROM || "Forcecraver Auth <sarthak@forcecraver.com>";
+
+  const subjectTitle = isReset
+    ? "Password Reset Code"
+    : isSetup
+    ? "Recruiter Setup Verification Code"
+    : "Login Verification Code";
+
+  const actionDescription = isReset
+    ? "Use the one-time verification code (OTP) below to <strong>reset your password</strong> on the Forcecraver Recruiter Portal."
+    : isSetup
+    ? "Use the one-time verification code (OTP) below to complete your <strong>One-Time Recruiter Setup</strong> and create your password on the Forcecraver Recruiter Portal."
+    : "Use the one-time verification code below to log into your <strong>Forcecraver Recruiter Account</strong>.";
+
+  const logoSub = isReset
+    ? "Password Reset Verification"
+    : isSetup
+    ? "One-Time Recruiter Setup"
+    : "Recruiter Portal Access";
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -49,19 +70,19 @@ export async function sendOtpEmail(
         <div class="container">
           <div class="header">
             <h1 class="logo-text">Forcecraver</h1>
-            <div class="logo-sub">Recruiter Portal Access</div>
+            <div class="logo-sub">${logoSub}</div>
           </div>
           <div class="content">
             <div class="greeting">Hello, ${recipientName} 👋</div>
             <p class="message">
-              Use the one-time verification code below to log into your <strong>Forcecraver Recruiter Account</strong>.
+              ${actionDescription}
             </p>
             <div class="otp-box">
               <div class="otp-code">${otp}</div>
               <div class="expiry">⏱️ Valid for 10 minutes only</div>
             </div>
             <p class="notice">
-              ⚠️ If you did not request this login code, please ignore this email or contact your administrator.
+              ⚠️ If you did not request this code, please ignore this email or contact your administrator immediately.
             </p>
           </div>
           <div class="footer">
@@ -73,7 +94,7 @@ export async function sendOtpEmail(
   `;
 
   console.log("----------------------------------------------------");
-  console.log(`🔐 [RECRUITER OTP GENERATED]`);
+  console.log(`🔐 [RECRUITER ${type.toUpperCase()} OTP GENERATED]`);
   console.log(`👤 Recipient : ${recipientName} <${toEmail}>`);
   console.log(`🔢 OTP Code  : ${otp}`);
   console.log(`⏱️  Expires in: 10 minutes`);
@@ -94,8 +115,8 @@ export async function sendOtpEmail(
       const info = await transporter.sendMail({
         from: fromEmail,
         to: toEmail,
-        subject: `Your Recruiter Portal Login Code: ${otp}`,
-        text: `Hello ${recipientName},\n\nYour Recruiter Portal Login OTP is: ${otp}\n\nThis code is valid for 10 minutes.\nIf you did not request this code, please ignore this email.`,
+        subject: `Forcecraver Recruiter Portal - ${subjectTitle}: ${otp}`,
+        text: `Hello ${recipientName},\n\nYour Recruiter Portal ${subjectTitle} is: ${otp}\n\nThis code is valid for 10 minutes.\nIf you did not request this code, please ignore this email.`,
         html: htmlContent,
       });
 

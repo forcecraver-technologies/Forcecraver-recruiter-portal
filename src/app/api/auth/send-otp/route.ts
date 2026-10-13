@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findUserByEmail, createUser, setUserOtp } from "@/lib/users";
-import { isAllowedEmail, signAuthToken, AUTH_COOKIE_NAME, RECRUITER_COOKIE_NAME } from "@/lib/auth";
+import { isAllowedEmail } from "@/lib/auth";
 import { generateOTP, sendOtpEmail } from "@/lib/mailer";
 
 export async function POST(req: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     if (!isAllowedEmail(rawEmail)) {
       return NextResponse.json(
-        { error: "Please enter a valid work email address." },
+        { error: "Invalid email domain. Only official work email addresses are allowed (e.g. name@forcecraver.com)." },
         { status: 403 }
       );
     }
@@ -36,8 +36,20 @@ export async function POST(req: NextRequest) {
         .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
 
+    // Check if account already exists with active password
+    const existingUser = await findUserByEmail(rawEmail);
+    if (existingUser && existingUser.password) {
+      return NextResponse.json(
+        {
+          error: `An account for ${rawEmail} is already registered with a password. Please switch to the "Sign In" tab to log in.`,
+          alreadyRegistered: true,
+        },
+        { status: 409 }
+      );
+    }
+
     // Find or create user
-    let user = await findUserByEmail(rawEmail);
+    let user = existingUser;
     if (!user) {
       user = await createUser({
         email: rawEmail,
@@ -60,12 +72,13 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
     await setUserOtp(rawEmail, otp, expiresAt);
-    await sendOtpEmail(rawEmail, otp, user.name);
+    await sendOtpEmail(rawEmail, otp, user.name || computedFullName, "setup");
 
     return NextResponse.json({
       success: true,
       message: `A 6-digit verification code (OTP) has been sent to ${rawEmail}`,
-      devOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
+      email: rawEmail,
+      demoOtp: otp,
       user: {
         id: user.id,
         name: user.name,

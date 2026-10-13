@@ -17,6 +17,9 @@ export interface UserAccount {
   canAccessCandidates: boolean;
   canScheduleInterviews: boolean;
   isDeveloper: boolean;
+  password?: string | null;
+  resetOtpCode?: string | null;
+  resetOtpExpiresAt?: string | Date | null;
   otpCode?: string | null;
   otpExpiresAt?: string | Date | null;
   lastLoginAt?: string | Date | null;
@@ -52,7 +55,8 @@ export async function findUserByEmail(email: string): Promise<UserAccount | null
       const res = await pool.query(
         `SELECT id, name, first_name, last_name, email, phone, role, designation,
                 is_active, can_post_jd, can_screen_candidates, can_access_candidates,
-                can_schedule_interviews, is_developer, otp_code, otp_expires_at, last_login_at, created_at
+                can_schedule_interviews, is_developer, password, reset_otp_code, reset_otp_expires_at,
+                otp_code, otp_expires_at, last_login_at, created_at
          FROM users
          WHERE LOWER(email) = $1
          LIMIT 1`,
@@ -76,6 +80,9 @@ export async function findUserByEmail(email: string): Promise<UserAccount | null
           canAccessCandidates: Boolean(row.can_access_candidates),
           canScheduleInterviews: Boolean(row.can_schedule_interviews),
           isDeveloper: Boolean(row.is_developer),
+          password: row.password || null,
+          resetOtpCode: row.reset_otp_code || null,
+          resetOtpExpiresAt: row.reset_otp_expires_at || null,
           otpCode: row.otp_code,
           otpExpiresAt: row.otp_expires_at,
           lastLoginAt: row.last_login_at,
@@ -99,6 +106,7 @@ export async function createUser(data: {
   phone?: string;
   role?: string;
   designation?: string;
+  password?: string;
 }): Promise<UserAccount> {
   const cleanEmail = data.email.trim().toLowerCase();
   const isMaster =
@@ -118,12 +126,12 @@ export async function createUser(data: {
         `INSERT INTO users (
            id, name, first_name, last_name, email, phone, role, designation,
            is_active, can_post_jd, can_screen_candidates, can_access_candidates,
-           can_schedule_interviews, is_developer, created_at, updated_at
+           can_schedule_interviews, is_developer, password, created_at, updated_at
          )
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, true, $8, $8, true, $8, $9, NOW(), NOW())
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, true, $8, $8, true, $8, $9, $10, NOW(), NOW())
          RETURNING id, name, first_name, last_name, email, phone, role, designation,
                    is_active, can_post_jd, can_screen_candidates, can_access_candidates,
-                   can_schedule_interviews, is_developer, created_at`,
+                   can_schedule_interviews, is_developer, password, created_at`,
         [
           data.name,
           data.firstName || null,
@@ -134,6 +142,7 @@ export async function createUser(data: {
           designation,
           isDev,
           isDev,
+          data.password || null,
         ]
       );
 
@@ -154,6 +163,7 @@ export async function createUser(data: {
           canAccessCandidates: true,
           canScheduleInterviews: isDev,
           isDeveloper: isDev,
+          password: row.password || null,
         };
       }
     } catch (err) {
@@ -179,6 +189,7 @@ export async function createUser(data: {
     canAccessCandidates: true,
     canScheduleInterviews: isDev,
     isDeveloper: isDev,
+    password: data.password || null,
     createdAt: new Date().toISOString(),
   };
 
@@ -230,7 +241,7 @@ export async function clearUserOtpAndRecordLogin(email: string): Promise<UserAcc
          WHERE LOWER(email) = $1
          RETURNING id, name, first_name, last_name, email, phone, role, designation,
                    is_active, can_post_jd, can_screen_candidates, can_access_candidates,
-                   can_schedule_interviews, is_developer`,
+                   can_schedule_interviews, is_developer, password`,
         [cleanEmail]
       );
 
@@ -251,6 +262,7 @@ export async function clearUserOtpAndRecordLogin(email: string): Promise<UserAcc
           canAccessCandidates: Boolean(row.can_access_candidates),
           canScheduleInterviews: Boolean(row.can_schedule_interviews),
           isDeveloper: Boolean(row.is_developer),
+          password: row.password || null,
         };
       }
     } catch (err) {
@@ -269,6 +281,164 @@ export async function clearUserOtpAndRecordLogin(email: string): Promise<UserAcc
   }
 
   return null;
+}
+
+export async function setUserResetOtp(
+  email: string,
+  otpCode: string,
+  expiresAt: Date
+): Promise<void> {
+  const cleanEmail = email.trim().toLowerCase();
+  const pool = getPgPool();
+
+  if (pool) {
+    try {
+      await pool.query(
+        `UPDATE users
+         SET reset_otp_code = $1, reset_otp_expires_at = $2, updated_at = NOW()
+         WHERE LOWER(email) = $3`,
+        [otpCode, expiresAt, cleanEmail]
+      );
+      return;
+    } catch (err) {
+      console.warn("PostgreSQL setUserResetOtp failed, saving locally:", err);
+    }
+  }
+
+  const local = await readLocalUsers();
+  const idx = local.findIndex((u) => u.email.toLowerCase() === cleanEmail);
+  if (idx !== -1) {
+    local[idx].resetOtpCode = otpCode;
+    local[idx].resetOtpExpiresAt = expiresAt.toISOString();
+    await writeLocalUsers(local);
+  }
+}
+
+export async function updateUserPassword(
+  email: string,
+  passwordHash: string
+): Promise<boolean> {
+  const cleanEmail = email.trim().toLowerCase();
+  const pool = getPgPool();
+
+  if (pool) {
+    try {
+      const res = await pool.query(
+        `UPDATE users
+         SET password = $1, reset_otp_code = NULL, reset_otp_expires_at = NULL, updated_at = NOW()
+         WHERE LOWER(email) = $2`,
+        [passwordHash, cleanEmail]
+      );
+      return (res.rowCount ?? 0) > 0;
+    } catch (err) {
+      console.warn("PostgreSQL updateUserPassword failed, saving locally:", err);
+    }
+  }
+
+  const local = await readLocalUsers();
+  const idx = local.findIndex((u) => u.email.toLowerCase() === cleanEmail);
+  if (idx !== -1) {
+    local[idx].password = passwordHash;
+    local[idx].resetOtpCode = null;
+    local[idx].resetOtpExpiresAt = null;
+    await writeLocalUsers(local);
+    return true;
+  }
+
+  return false;
+}
+
+export async function activateUserWithPassword(data: {
+  email: string;
+  passwordHash: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+}): Promise<UserAccount> {
+  const cleanEmail = data.email.trim().toLowerCase();
+  const existing = await findUserByEmail(cleanEmail);
+
+  if (existing) {
+    const pool = getPgPool();
+    if (pool) {
+      try {
+        const res = await pool.query(
+          `UPDATE users
+           SET password = $1,
+               name = COALESCE(NULLIF($2, ''), name),
+               first_name = COALESCE(NULLIF($3, ''), first_name),
+               last_name = COALESCE(NULLIF($4, ''), last_name),
+               phone = COALESCE(NULLIF($5, ''), phone),
+               otp_code = NULL,
+               otp_expires_at = NULL,
+               last_login_at = NOW(),
+               updated_at = NOW()
+           WHERE LOWER(email) = $6
+           RETURNING id, name, first_name, last_name, email, phone, role, designation,
+                     is_active, can_post_jd, can_screen_candidates, can_access_candidates,
+                     can_schedule_interviews, is_developer, password`,
+          [
+            data.passwordHash,
+            data.name || "",
+            data.firstName || "",
+            data.lastName || "",
+            data.phone || "",
+            cleanEmail,
+          ]
+        );
+
+        if (res.rows.length > 0) {
+          const row = res.rows[0];
+          return {
+            id: row.id,
+            name: row.name,
+            firstName: row.first_name,
+            lastName: row.last_name,
+            email: row.email,
+            phone: row.phone,
+            role: row.role,
+            designation: row.designation,
+            isActive: Boolean(row.is_active),
+            canPostJd: Boolean(row.can_post_jd),
+            canScreenCandidates: Boolean(row.can_screen_candidates),
+            canAccessCandidates: Boolean(row.can_access_candidates),
+            canScheduleInterviews: Boolean(row.can_schedule_interviews),
+            isDeveloper: Boolean(row.is_developer),
+            password: row.password || null,
+          };
+        }
+      } catch (err) {
+        console.warn("PostgreSQL activateUserWithPassword failed:", err);
+      }
+    }
+
+    // Local fallback
+    const local = await readLocalUsers();
+    const idx = local.findIndex((u) => u.email.toLowerCase() === cleanEmail);
+    if (idx !== -1) {
+      local[idx].password = data.passwordHash;
+      if (data.name) local[idx].name = data.name;
+      if (data.firstName) local[idx].firstName = data.firstName;
+      if (data.lastName) local[idx].lastName = data.lastName;
+      if (data.phone) local[idx].phone = data.phone;
+      local[idx].otpCode = null;
+      local[idx].otpExpiresAt = null;
+      local[idx].lastLoginAt = new Date().toISOString();
+      await writeLocalUsers(local);
+      return local[idx];
+    }
+  }
+
+  // Create new user if not existing
+  return await createUser({
+    email: cleanEmail,
+    name: data.name || cleanEmail.split("@")[0],
+    firstName: data.firstName,
+    lastName: data.lastName,
+    phone: data.phone,
+    password: data.passwordHash,
+  });
 }
 
 export async function getAllRecruiters(): Promise<UserAccount[]> {
