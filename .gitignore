@@ -17,6 +17,9 @@
 # misc
 .DS_Store
 *.pem
+recruiter-portal-backup.git/
+backup_schema_and_data.sql
+
 
 # debug
 npm-debug.log*
