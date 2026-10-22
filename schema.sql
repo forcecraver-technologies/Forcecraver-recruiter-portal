@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS candidates (
     phone VARCHAR(50),
     experience VARCHAR(50),
     location VARCHAR(255),
-    current_role VARCHAR(255),
+    "current_role" VARCHAR(255),
     current_company VARCHAR(255),
     current_ctc VARCHAR(100),
     expected_ctc VARCHAR(100),
