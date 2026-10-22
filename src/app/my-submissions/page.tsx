@@ -27,6 +27,15 @@ import { Candidate, Recruiter, JobDescription } from "@/types";
 import CandidateModal from "@/components/CandidateModal";
 import EditCandidateModal from "@/components/EditCandidateModal";
 
+function formatBudget(val?: string) {
+  if (!val || val === "N/A") return "N/A";
+  const clean = val.trim();
+  if (clean.startsWith("₹") || clean.startsWith("Rs") || clean.startsWith("INR")) {
+    return clean;
+  }
+  return `₹ ${clean}`;
+}
+
 export default function MySubmissionsPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jds, setJds] = useState<JobDescription[]>([]);
@@ -402,20 +411,14 @@ export default function MySubmissionsPage() {
                     </div>
                   )}
 
-                  {/* Separate Cells for Compensation */}
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2 bg-amber-50/70 rounded-lg border border-amber-200">
-                      <span className="text-[10px] text-amber-800 font-semibold block">
-                        Current CTC
-                      </span>
-                      <span className="font-bold text-amber-950 text-sm">₹ {cand.currentCtc}</span>
-                    </div>
-                    <div className="p-2 bg-emerald-50/70 rounded-lg border border-emerald-200">
-                      <span className="text-[10px] text-emerald-800 font-semibold block">
-                        Expected Budget
-                      </span>
-                      <span className="font-bold text-emerald-950 text-sm">₹ {cand.expectedBudget}</span>
-                    </div>
+                  {/* Single Budget Box */}
+                  <div className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200">
+                    <span className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider block">
+                      Budget
+                    </span>
+                    <span className="font-bold text-emerald-950 text-sm">
+                      {formatBudget(cand.budget || cand.expectedBudget || cand.currentCtc)}
+                    </span>
                   </div>
 
                   {/* Rating and Skills */}

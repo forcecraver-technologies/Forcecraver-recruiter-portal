@@ -34,6 +34,15 @@ import CandidateModal from "@/components/CandidateModal";
 import JDModal from "@/components/JDModal";
 import EditCandidateModal from "@/components/EditCandidateModal";
 
+function formatBudget(val?: string) {
+  if (!val || val === "N/A") return "N/A";
+  const clean = val.trim();
+  if (clean.startsWith("₹") || clean.startsWith("Rs") || clean.startsWith("INR")) {
+    return clean;
+  }
+  return `₹ ${clean}`;
+}
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<"candidates" | "jds" | "recruiters">("candidates");
 
@@ -375,8 +384,7 @@ export default function AdminPage() {
       "Current Company",
       "Designation",
       "Experience",
-      "Current CTC (LPA / LPM)", // Separate Column
-      "Expected Budget (LPA / LPM)", // Separate Column
+      "Budget (LPA / LPM)",
       "Notice Period",
       "Location",
       "Primary Skills",
@@ -398,8 +406,7 @@ export default function AdminPage() {
       `"${c.currentCompany}"`,
       `"${c.currentDesignation}"`,
       `"${c.experienceYears}"`,
-      `"${c.currentCtc}"`, // Separate Cell
-      `"${c.expectedBudget}"`, // Separate Cell
+      `"${c.budget || c.expectedBudget || c.currentCtc || "N/A"}"`,
       `"${c.noticePeriodDays}"`,
       `"${c.location}"`,
       `"${c.skills.join(", ")}"`,
@@ -806,12 +813,8 @@ export default function AdminPage() {
                     <th className="py-3 px-3">Candidate & Contact</th>
                     <th className="py-3 px-3">Mapped Open JD & Match</th>
                     <th className="py-3 px-3">Recruiter</th>
-                    {/* Separate Cells for Current CTC and Expected Budget */}
-                    <th className="py-3 px-3 bg-amber-50/60 text-amber-900 border-x border-amber-100">
-                      Current CTC
-                    </th>
-                    <th className="py-3 px-3 bg-emerald-50/60 text-emerald-900 border-r border-emerald-100">
-                      Expected Budget
+                    <th className="py-3 px-3 bg-emerald-50/60 text-emerald-900 border-x border-emerald-100">
+                      Budget
                     </th>
                     <th className="py-3 px-3">Exp / Notice</th>
                     <th className="py-3 px-3">Skills & Rating</th>
@@ -923,26 +926,11 @@ export default function AdminPage() {
                             </span>
                           </td>
 
-                          {/* SEPARATE CELL: Current CTC */}
-                          <td className="py-3 px-3 font-semibold text-amber-900 bg-amber-50/30 border-x border-amber-100 whitespace-nowrap">
+                          {/* SINGLE CELL: Budget */}
+                          <td className="py-3 px-3 font-bold text-emerald-900 bg-emerald-50/30 border-x border-emerald-100 whitespace-nowrap">
                             <div className="flex items-center gap-1">
-                              <span>₹</span>
-                              <span>{cand.currentCtc || "N/A"}</span>
+                              <span>{formatBudget(cand.budget || cand.expectedBudget || cand.currentCtc)}</span>
                             </div>
-                            <span className="text-[10px] text-amber-700/70 font-normal">
-                              Present CTC
-                            </span>
-                          </td>
-
-                          {/* SEPARATE CELL: Expected Budget */}
-                          <td className="py-3 px-3 font-bold text-emerald-900 bg-emerald-50/30 border-r border-emerald-100 whitespace-nowrap">
-                            <div className="flex items-center gap-1">
-                              <span>₹</span>
-                              <span>{cand.expectedBudget || "N/A"}</span>
-                            </div>
-                            <span className="text-[10px] text-emerald-700/70 font-normal">
-                              Expected Budget
-                            </span>
                           </td>
 
                           {/* Exp / Notice */}
@@ -1111,8 +1099,7 @@ export default function AdminPage() {
                 Showing {filteredCandidates.length} of {candidates.length} candidates
               </span>
               <span className="text-[11px] text-slate-400">
-                Notice: Current CTC and Expected Budget are tracked in distinct cells for accurate
-                budget analysis.
+                Notice: Candidate Budget is tracked for accurate compensation analysis.
               </span>
             </div>
           </div>
@@ -1458,25 +1445,14 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* Distinct Compensation Cells */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="p-2 bg-amber-50 rounded-lg border border-amber-200">
-                  <span className="text-amber-800 block font-semibold text-[11px]">
-                    Current CTC (LPA / LPM)
-                  </span>
-                  <span className="text-amber-950 font-bold text-base">
-                    ₹ {selectedCandidateForDetails.currentCtc || "N/A"}
-                  </span>
-                </div>
-
-                <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <span className="text-emerald-800 block font-semibold text-[11px]">
-                    Expected Budget (LPA / LPM)
-                  </span>
-                  <span className="text-emerald-950 font-bold text-base">
-                    ₹ {selectedCandidateForDetails.expectedBudget || "N/A"}
-                  </span>
-                </div>
+              {/* Single Budget Box */}
+              <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200">
+                <span className="text-emerald-800 block font-semibold text-[11px] uppercase tracking-wider">
+                  Budget (LPA / LPM)
+                </span>
+                <span className="text-emerald-950 font-bold text-base">
+                  {formatBudget(selectedCandidateForDetails.budget || selectedCandidateForDetails.expectedBudget || selectedCandidateForDetails.currentCtc)}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

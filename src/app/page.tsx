@@ -24,6 +24,15 @@ import {
 import { Candidate, Recruiter, JobDescription } from "@/types";
 import CandidateModal from "@/components/CandidateModal";
 
+function formatBudget(val?: string) {
+  if (!val || val === "N/A") return "N/A";
+  const clean = val.trim();
+  if (clean.startsWith("₹") || clean.startsWith("Rs") || clean.startsWith("INR")) {
+    return clean;
+  }
+  return `₹ ${clean}`;
+}
+
 export default function HomePage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
@@ -464,7 +473,7 @@ export default function HomePage() {
                       {cand.fullName}
                     </h3>
                     <div className="text-xs text-slate-600 font-medium mt-0.5 line-clamp-1">
-                      {cand.currentDesignation} &bull; <span className="text-slate-500">{cand.currentCompany}</span>
+                      {cand.currentDesignation}{cand.currentCompany && cand.currentCompany !== "N/A" && (<> &bull; <span className="text-slate-500">{cand.currentCompany}</span></>)}
                     </div>
                   </div>
 
@@ -483,25 +492,14 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Distinct Compensation Cells: Current CTC & Expected Budget */}
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2 rounded-lg bg-amber-50/70 border border-amber-200/80">
-                      <span className="text-[10px] font-semibold text-amber-800 uppercase tracking-wider block">
-                        Current CTC
-                      </span>
-                      <span className="font-bold text-slate-900 text-sm">
-                        ₹ {cand.currentCtc || "N/A"}
-                      </span>
-                    </div>
-
-                    <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
-                      <span className="text-[10px] font-semibold text-emerald-800 uppercase tracking-wider block">
-                        Expected Budget
-                      </span>
-                      <span className="font-bold text-emerald-950 text-sm">
-                        ₹ {cand.expectedBudget || "N/A"}
-                      </span>
-                    </div>
+                  {/* Single Budget Box */}
+                  <div className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                      Budget
+                    </span>
+                    <span className="font-bold text-emerald-950 text-sm">
+                      {formatBudget(cand.budget || cand.expectedBudget || cand.currentCtc)}
+                    </span>
                   </div>
 
                   {/* Exp, Notice, Location */}
@@ -736,25 +734,14 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Distinct Compensation Cells */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="p-2 bg-amber-50 rounded-lg border border-amber-200">
-                  <span className="text-amber-800 block font-semibold text-[11px]">
-                    Current CTC (LPA / LPM)
-                  </span>
-                  <span className="text-amber-950 font-bold text-base">
-                    ₹ {selectedCandidateForDetails.currentCtc || "N/A"}
-                  </span>
-                </div>
-
-                <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <span className="text-emerald-800 block font-semibold text-[11px]">
-                    Expected Budget (LPA / LPM)
-                  </span>
-                  <span className="text-emerald-950 font-bold text-base">
-                    ₹ {selectedCandidateForDetails.expectedBudget || "N/A"}
-                  </span>
-                </div>
+              {/* Single Budget Box */}
+              <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200">
+                <span className="text-emerald-800 block font-semibold text-[11px] uppercase tracking-wider">
+                  Budget (LPA / LPM)
+                </span>
+                <span className="text-emerald-950 font-bold text-base">
+                  {formatBudget(selectedCandidateForDetails.budget || selectedCandidateForDetails.expectedBudget || selectedCandidateForDetails.currentCtc)}
+                </span>
               </div>
 
               {/* Contact & Experience Grid */}
