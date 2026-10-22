@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { X, Check, AlertCircle, Briefcase, User, IndianRupee, Clock, Building, MapPin, Sparkles, Loader2 } from "lucide-react";
+import { X, Check, AlertCircle, Briefcase, User, IndianRupee, Clock, Building, MapPin, Sparkles, Loader2, Search } from "lucide-react";
 import { JobDescription, Recruiter, ScreeningStatus } from "@/types";
 
 interface CandidateModalProps {
@@ -20,6 +20,8 @@ export default function CandidateModal({
   const [jds, setJds] = useState<JobDescription[]>([]);
   const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
   const [selectedJdId, setSelectedJdId] = useState<string>(preselectedJdId || "");
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("All");
+  const [jdSearchTerm, setJdSearchTerm] = useState<string>("");
   const [recruiterName, setRecruiterName] = useState<string>("");
   const [loggedInUser, setLoggedInUser] = useState<any | null>(null);
 
@@ -30,8 +32,7 @@ export default function CandidateModal({
     currentCompany: "",
     currentDesignation: "",
     experienceYears: "",
-    currentCtc: "",
-    expectedBudget: "",
+    budget: "",
     noticePeriodDays: "30 Days",
     location: "",
     skills: "",
@@ -105,6 +106,47 @@ export default function CandidateModal({
     loadData();
   }, [isOpen, preselectedJdId]);
 
+  // Unique companies list for dropdown filter
+  const uniqueCompanies = useMemo(() => {
+    const set = new Set<string>();
+    jds.forEach((j) => {
+      if (j.client && j.client.trim()) {
+        set.add(j.client.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [jds]);
+
+  // Company and JD wise filtered list
+  const filteredJds = useMemo(() => {
+    return jds.filter((jd) => {
+      const matchesCompany =
+        selectedCompanyFilter === "All" ||
+        (jd.client && jd.client.toLowerCase() === selectedCompanyFilter.toLowerCase());
+
+      const query = jdSearchTerm.trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        jd.title.toLowerCase().includes(query) ||
+        (jd.client && jd.client.toLowerCase().includes(query)) ||
+        (jd.requiredSkills && jd.requiredSkills.some((s) => s.toLowerCase().includes(query)));
+
+      return matchesCompany && matchesSearch;
+    });
+  }, [jds, selectedCompanyFilter, jdSearchTerm]);
+
+  // Auto-select JD if currently selected is filtered out
+  useEffect(() => {
+    if (filteredJds.length > 0) {
+      const stillValid = filteredJds.some((j) => j.id === selectedJdId);
+      if (!stillValid) {
+        setSelectedJdId(filteredJds[0].id);
+      }
+    } else {
+      setSelectedJdId("");
+    }
+  }, [filteredJds, selectedJdId]);
+
   const activeSelectedJd = jds.find((j) => j.id === selectedJdId);
 
   // AI Skill Match Score computation
@@ -164,6 +206,9 @@ export default function CandidateModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          budget: formData.budget,
+          expectedBudget: formData.budget,
+          currentCtc: formData.budget,
           jdId: selectedJdId,
           recruiterName: recruiterName.trim(),
         }),
@@ -230,16 +275,102 @@ export default function CandidateModal({
 
           {/* Section 1: JD & Recruiter Mapping */}
           <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
-              <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
-              Step 1: Map to Live Open JD
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
+                Step 1: Map to Live Open JD
+              </div>
+              <span className="text-[10px] text-indigo-700 font-semibold bg-white px-2 py-0.5 rounded-full border border-indigo-200">
+                {filteredJds.length} of {jds.length} JDs Live
+              </span>
+            </div>
+
+            {/* Quick Filter: Company & JD Search */}
+            <div className="p-2.5 bg-white rounded-xl border border-indigo-200/90 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Search className="w-3.5 h-3.5 text-indigo-600" />
+                  Search &amp; Filter Open JDs
+                </span>
+                {(selectedCompanyFilter !== "All" || jdSearchTerm.trim() !== "") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCompanyFilter("All");
+                      setJdSearchTerm("");
+                    }}
+                    className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold underline cursor-pointer"
+                  >
+                    Clear Filter
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* 1. Filter by Company */}
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                    <Building className="w-3 h-3 text-indigo-500" />
+                    Company / Client Wise
+                  </label>
+                  <select
+                    value={selectedCompanyFilter}
+                    onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+                    className="w-full text-xs rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="All">All Companies ({uniqueCompanies.length})</option>
+                    {uniqueCompanies.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. JD Search */}
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                    <Search className="w-3 h-3 text-indigo-500" />
+                    JD / Role Wise Search
+                  </label>
+                  <div className="flex gap-1.5">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        placeholder="Search JD e.g. Salesforce, React..."
+                        value={jdSearchTerm}
+                        onChange={(e) => setJdSearchTerm(e.target.value)}
+                        className="w-full text-xs rounded-lg border border-slate-300 bg-white pl-2.5 pr-7 py-1.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      {jdSearchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setJdSearchTerm("")}
+                          className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                          title="Clear search"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium flex items-center gap-1 shrink-0 shadow-2xs"
+                    >
+                      <Search className="w-3 h-3" />
+                      Search
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
                   <span>Select Open JD <span className="text-red-500">*</span></span>
-                  <span className="text-[10px] text-indigo-600 font-medium">{jds.length} JDs Live</span>
+                  <span className="text-[10px] text-indigo-600 font-medium">
+                    {filteredJds.length} of {jds.length} JDs Live
+                  </span>
                 </label>
                 <select
                   value={selectedJdId}
@@ -248,8 +379,12 @@ export default function CandidateModal({
                   disabled={fetchingData}
                   required
                 >
-                  <option value="">-- Choose Open JD from System --</option>
-                  {jds.map((jd) => (
+                  <option value="">
+                    {filteredJds.length === 0
+                      ? "-- No JDs match search filter --"
+                      : `-- Choose Open JD (${filteredJds.length} Available) --`}
+                  </option>
+                  {filteredJds.map((jd) => (
                     <option key={jd.id} value={jd.id}>
                       {jd.title} &bull; {jd.client} ({jd.budget || "Budget N/A"})
                     </option>
@@ -442,37 +577,20 @@ export default function CandidateModal({
               </div>
             </div>
 
-            {/* Distinct Financial & Notice Period Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Budget & Notice Period Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Current CTC (LPA / LPM) <span className="text-red-500">*</span>
+                  Budget (LPA / LPM) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <IndianRupee className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <IndianRupee className="w-4 h-4 absolute left-3 top-2.5 text-indigo-600" />
                   <input
                     type="text"
                     required
                     placeholder="e.g. 14 LPA / 1.2 LPM"
-                    value={formData.currentCtc}
-                    onChange={(e) => setFormData({ ...formData, currentCtc: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Expected CTC / Budget (LPA / LPM) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <IndianRupee className="w-4 h-4 absolute left-3 top-2.5 text-indigo-500" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 20 LPA / 1.5 LPM"
-                    value={formData.expectedBudget}
-                    onChange={(e) => setFormData({ ...formData, expectedBudget: e.target.value })}
+                    value={formData.budget}
+                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
                     className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium"
                   />
                 </div>

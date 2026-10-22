@@ -16,8 +16,9 @@ export interface Candidate {
   currentCompany: string;
   currentDesignation: string;
   experienceYears: string;
-  currentCtc: string; // Separate Cell: e.g. "12 LPA / 1 LPM"
-  expectedBudget: string; // Separate Cell: e.g. "16 LPA / 1.5 LPM"
+  currentCtc: string; // e.g. "12 LPA / 1 LPM"
+  expectedBudget: string; // e.g. "16 LPA / 1.5 LPM"
+  budget?: string;
   noticePeriodDays: string;
   location: string;
   skills: string[];

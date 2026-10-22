@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { X, Check, AlertCircle, User, Briefcase, IndianRupee, Clock, MapPin, Building, Sparkles } from "lucide-react";
+import { X, Check, AlertCircle, User, Briefcase, IndianRupee, Clock, MapPin, Building, Sparkles, Search } from "lucide-react";
 import { Candidate, JobDescription, Recruiter, ScreeningStatus } from "@/types";
 
 interface EditCandidateModalProps {
@@ -20,6 +20,8 @@ export default function EditCandidateModal({
   const [jds, setJds] = useState<JobDescription[]>([]);
   const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
   const [selectedJdId, setSelectedJdId] = useState<string>(candidate.jdId || "");
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("All");
+  const [jdSearchTerm, setJdSearchTerm] = useState<string>("");
   const [recruiterName, setRecruiterName] = useState<string>(candidate.recruiterName || "");
 
   const [formData, setFormData] = useState({
@@ -29,8 +31,7 @@ export default function EditCandidateModal({
     currentCompany: candidate.currentCompany || "",
     currentDesignation: candidate.currentDesignation || "",
     experienceYears: candidate.experienceYears || "",
-    currentCtc: candidate.currentCtc || "",
-    expectedBudget: candidate.expectedBudget || "",
+    budget: candidate.expectedBudget || candidate.currentCtc || "",
     noticePeriodDays: candidate.noticePeriodDays || "",
     location: candidate.location || "",
     skills: candidate.skills?.join(", ") || "",
@@ -64,6 +65,35 @@ export default function EditCandidateModal({
 
     loadMetadata();
   }, [isOpen]);
+
+  // Unique companies list for dropdown filter
+  const uniqueCompanies = useMemo(() => {
+    const set = new Set<string>();
+    jds.forEach((j) => {
+      if (j.client && j.client.trim()) {
+        set.add(j.client.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [jds]);
+
+  // Filtered JDs based on company & search term
+  const filteredJds = useMemo(() => {
+    return jds.filter((jd) => {
+      const matchesCompany =
+        selectedCompanyFilter === "All" ||
+        (jd.client && jd.client.toLowerCase() === selectedCompanyFilter.toLowerCase());
+
+      const query = jdSearchTerm.trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        jd.title.toLowerCase().includes(query) ||
+        (jd.client && jd.client.toLowerCase().includes(query)) ||
+        (jd.requiredSkills && jd.requiredSkills.some((s) => s.toLowerCase().includes(query)));
+
+      return matchesCompany && matchesSearch;
+    });
+  }, [jds, selectedCompanyFilter, jdSearchTerm]);
 
   const activeSelectedJd = jds.find((j) => j.id === selectedJdId);
 
@@ -118,6 +148,9 @@ export default function EditCandidateModal({
         body: JSON.stringify({
           id: candidate.id,
           ...formData,
+          budget: formData.budget,
+          expectedBudget: formData.budget,
+          currentCtc: formData.budget,
           jdId: selectedJdId,
           recruiterName: recruiterName.trim(),
         }),
@@ -188,26 +221,113 @@ export default function EditCandidateModal({
 
           {/* Section 1: Mapped Open JD & Recruiter */}
           <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4 space-y-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
-              <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
-              Step 1: Open JD & Recruiter Assignment
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
+                Step 1: Open JD &amp; Recruiter Assignment
+              </div>
+              <span className="text-[10px] text-indigo-700 font-semibold bg-white px-2 py-0.5 rounded-full border border-indigo-200">
+                {filteredJds.length} of {jds.length} JDs Live
+              </span>
+            </div>
+
+            {/* Quick Filter: Company & JD Search */}
+            <div className="p-2.5 bg-white rounded-xl border border-indigo-200/90 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Search className="w-3.5 h-3.5 text-indigo-600" />
+                  Search &amp; Filter Open JDs
+                </span>
+                {(selectedCompanyFilter !== "All" || jdSearchTerm.trim() !== "") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCompanyFilter("All");
+                      setJdSearchTerm("");
+                    }}
+                    className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold underline cursor-pointer"
+                  >
+                    Clear Filter
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* 1. Filter by Company */}
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                    <Building className="w-3 h-3 text-indigo-500" />
+                    Company / Client Wise
+                  </label>
+                  <select
+                    value={selectedCompanyFilter}
+                    onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+                    className="w-full text-xs rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="All">All Companies ({uniqueCompanies.length})</option>
+                    {uniqueCompanies.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. JD Search */}
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                    <Search className="w-3 h-3 text-indigo-500" />
+                    JD / Role Wise Search
+                  </label>
+                  <div className="flex gap-1.5">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        placeholder="Search JD e.g. Salesforce, React..."
+                        value={jdSearchTerm}
+                        onChange={(e) => setJdSearchTerm(e.target.value)}
+                        className="w-full text-xs rounded-lg border border-slate-300 bg-white pl-2.5 pr-7 py-1.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      {jdSearchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setJdSearchTerm("")}
+                          className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                          title="Clear search"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium flex items-center gap-1 shrink-0 shadow-2xs"
+                    >
+                      <Search className="w-3 h-3" />
+                      Search
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Mapped Open JD (Open JD System)
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Mapped Open JD <span className="text-red-500">*</span></span>
+                  <span className="text-[10px] text-indigo-600 font-medium">{filteredJds.length} JDs Found</span>
                 </label>
                 <select
                   value={selectedJdId}
                   onChange={(e) => setSelectedJdId(e.target.value)}
                   className="w-full text-sm rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value={candidate.jdId}>
-                    {candidate.jdTitle} ({candidate.clientName}) [Current]
-                  </option>
-                  {jds
-                    .filter((j) => j.id !== candidate.jdId)
+                  {selectedJdId === candidate.jdId && (
+                    <option value={candidate.jdId}>
+                      {candidate.jdTitle} ({candidate.clientName}) [Current]
+                    </option>
+                  )}
+                  {filteredJds
+                    .filter((j) => selectedJdId === candidate.jdId ? j.id !== candidate.jdId : true)
                     .map((jd) => (
                       <option key={jd.id} value={jd.id}>
                         {jd.title} &bull; {jd.client} ({jd.budget || "Budget N/A"})
@@ -346,38 +466,21 @@ export default function EditCandidateModal({
               </div>
             </div>
 
-            {/* Compensation Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-amber-50/50 rounded-xl border border-amber-200">
+            {/* Compensation & Notice Period Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-indigo-50/40 rounded-xl border border-indigo-100">
               <div>
-                <label className="block text-xs font-bold text-amber-900 mb-1">
-                  Current CTC (LPA / LPM) <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Budget (LPA / LPM) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-slate-400 text-sm">₹</span>
+                  <span className="absolute left-3 top-2 text-indigo-600 text-sm font-semibold">₹</span>
                   <input
                     type="text"
                     required
                     placeholder="e.g. 14 LPA / 1.2 LPM"
-                    value={formData.currentCtc}
-                    onChange={(e) => setFormData({ ...formData, currentCtc: e.target.value })}
-                    className="w-full text-sm rounded-lg border border-amber-300 pl-7 pr-3 py-2 bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-emerald-900 mb-1">
-                  Expected Budget (LPA / LPM) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2 text-slate-400 text-sm">₹</span>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 20 LPA / 1.5 LPM"
-                    value={formData.expectedBudget}
-                    onChange={(e) => setFormData({ ...formData, expectedBudget: e.target.value })}
-                    className="w-full text-sm rounded-lg border border-emerald-300 pl-7 pr-3 py-2 bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    value={formData.budget}
+                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                    className="w-full text-sm rounded-lg border border-slate-300 pl-7 pr-3 py-2 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>

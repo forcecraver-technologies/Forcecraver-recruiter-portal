@@ -196,8 +196,8 @@ export async function POST(req: NextRequest) {
       currentCompany: body.currentCompany || "N/A",
       currentDesignation: body.currentDesignation || "Software Engineer",
       experienceYears: body.experienceYears || "0",
-      currentCtc: body.currentCtc || "N/A", // Distinct cell/field
-      expectedBudget: body.expectedBudget || "N/A", // Distinct cell/field
+      currentCtc: body.budget || body.currentCtc || "N/A", // Distinct cell/field
+      expectedBudget: body.budget || body.expectedBudget || "N/A", // Distinct cell/field
       noticePeriodDays: body.noticePeriodDays || "Immediate",
       location: body.location || "Bengaluru",
       skills: skillsArray,
@@ -289,6 +289,11 @@ export async function PATCH(req: NextRequest) {
         .split(",")
         .map((s: string) => s.trim())
         .filter(Boolean);
+    }
+
+    if (updates.budget) {
+      if (!updates.expectedBudget) updates.expectedBudget = updates.budget;
+      if (!updates.currentCtc) updates.currentCtc = updates.budget;
     }
 
     const updated = await updateCandidate(id, updates);
