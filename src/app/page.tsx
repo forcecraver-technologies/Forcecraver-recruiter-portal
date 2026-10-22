@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Candidate, Recruiter, JobDescription } from "@/types";
 import CandidateModal from "@/components/CandidateModal";
+import CandidateDetailModal from "@/components/CandidateDetailModal";
 
 function formatBudget(val?: string) {
   if (!val || val === "N/A") return "N/A";
@@ -517,6 +518,31 @@ export default function HomePage() {
                         <span>{cand.location}</span>
                       </div>
                     )}
+                    {/* Direct Contact Details on Card */}
+                    {(cand.phone || cand.email) && (
+                      <div className="col-span-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                        {cand.phone && (
+                          <a
+                            href={`tel:${cand.phone.replace(/\s+/g, '')}`}
+                            className="flex items-center gap-1 text-slate-600 hover:text-emerald-700 font-medium transition-colors"
+                            title="Call candidate"
+                          >
+                            <Phone className="w-3 h-3 text-emerald-600" />
+                            <span>{cand.phone}</span>
+                          </a>
+                        )}
+                        {cand.email && (
+                          <a
+                            href={`mailto:${cand.email}`}
+                            className="flex items-center gap-1 text-slate-600 hover:text-indigo-700 font-medium transition-colors truncate max-w-[170px]"
+                            title="Email candidate"
+                          >
+                            <Mail className="w-3 h-3 text-indigo-500" />
+                            <span className="truncate">{cand.email}</span>
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Skills badges & Skill Match */}
@@ -644,253 +670,12 @@ export default function HomePage() {
 
       {/* Candidate Full Profile View Modal */}
       {selectedCandidateForDetails && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in duration-200">
-            {/* Modal Header */}
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-mono text-indigo-400 uppercase tracking-wider block">
-                  Candidate ID: {selectedCandidateForDetails.id}
-                </span>
-                <h2 className="text-lg font-bold">{selectedCandidateForDetails.fullName}</h2>
-                <p className="text-xs text-slate-300">
-                  {selectedCandidateForDetails.currentDesignation} at {selectedCandidateForDetails.currentCompany}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedCandidateForDetails(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg text-lg font-bold"
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
-              {/* Recruiter & Status Header */}
-              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-slate-400 block text-[10px]">Submitted By Recruiter</span>
-                  <span className="text-sm font-bold text-slate-900">
-                    {selectedCandidateForDetails.recruiterName}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] text-right">Current Status</span>
-                  <span className="font-bold text-xs px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                    {selectedCandidateForDetails.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Mapped Open JD */}
-              <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
-                  Mapped Open JD (Open JD System)
-                </span>
-                <div className="text-sm font-bold text-indigo-950">
-                  {selectedCandidateForDetails.jdTitle}
-                </div>
-                <div className="text-slate-600 flex items-center gap-2">
-                  <span>Client: <strong>{selectedCandidateForDetails.clientName}</strong></span>
-                  <span>&bull;</span>
-                  <span>JD ID: <span className="font-mono text-[10px]">{selectedCandidateForDetails.jdId}</span></span>
-                </div>
-              </div>
-
-              {/* Screening Status Evaluation Box */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-semibold uppercase tracking-wider">
-                    Candidate Screening Evaluation
-                  </span>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${
-                        selectedCandidateForDetails.screeningStatus === "Good"
-                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                          : selectedCandidateForDetails.screeningStatus === "Average"
-                          ? "bg-amber-100 text-amber-800 border border-amber-300"
-                          : selectedCandidateForDetails.screeningStatus === "Worst"
-                          ? "bg-rose-100 text-rose-800 border border-rose-300"
-                          : "bg-blue-100 text-blue-800 border border-blue-300"
-                      }`}
-                    >
-                      {selectedCandidateForDetails.screeningStatus === "Good"
-                        ? "🟢 Good (Recommended)"
-                        : selectedCandidateForDetails.screeningStatus === "Average"
-                        ? "🟡 Average (Eligible)"
-                        : selectedCandidateForDetails.screeningStatus === "Worst"
-                        ? "🔴 Worst (Not Recommended)"
-                        : "⏳ Processing (In Screening)"}
-                    </span>
-                    <span className="text-xs text-slate-600 font-medium">
-                      {selectedCandidateForDetails.screeningStatus === "Good" ||
-                      selectedCandidateForDetails.screeningStatus === "Average"
-                        ? "✓ Live in Interview Portal (port 3001)"
-                        : "⏳ In Screening - Hidden from Interview Portal"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Single Budget Box */}
-              <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200">
-                <span className="text-emerald-800 block font-semibold text-[11px] uppercase tracking-wider">
-                  Budget (LPA / LPM)
-                </span>
-                <span className="text-emerald-950 font-bold text-base">
-                  {formatBudget(selectedCandidateForDetails.budget || selectedCandidateForDetails.expectedBudget || selectedCandidateForDetails.currentCtc)}
-                </span>
-              </div>
-
-              {/* Contact & Experience Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-slate-400 block font-medium">Email</span>
-                  <span className="text-slate-900 font-semibold">{selectedCandidateForDetails.email}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-medium">Phone</span>
-                  <span className="text-slate-900 font-semibold">{selectedCandidateForDetails.phone}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-medium">Experience</span>
-                  <span className="text-slate-900 font-semibold">{selectedCandidateForDetails.experienceYears}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-medium">Notice Period</span>
-                  <span className="text-slate-900 font-semibold">{selectedCandidateForDetails.noticePeriodDays}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-slate-400 block font-medium">Location</span>
-                  <span className="text-slate-900 font-semibold">{selectedCandidateForDetails.location}</span>
-                </div>
-              </div>
-
-              {/* Skills */}
-              <div>
-                <span className="text-slate-400 block font-medium mb-1">Key Skills</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedCandidateForDetails.skills.map((s, i) => (
-                    <span
-                      key={i}
-                      className="px-2.5 py-1 rounded bg-slate-100 text-slate-800 font-medium"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Interview Scheduling & Meeting Details if present */}
-              {(selectedCandidateForDetails.interviewDate || selectedCandidateForDetails.interviewLink) && (
-                <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Interview Details: {selectedCandidateForDetails.interviewRound || "Scheduled"}</span>
-                    </span>
-                    {Boolean(selectedCandidateForDetails.rating) && (
-                      <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                        ⭐ Rating: {selectedCandidateForDetails.rating}/5
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-slate-700">
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Date</span>
-                      <span className="font-semibold text-slate-900">{selectedCandidateForDetails.interviewDate}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Time</span>
-                      <span className="font-semibold text-slate-900">{selectedCandidateForDetails.interviewTime || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Interviewer</span>
-                      <span className="font-semibold text-slate-900">{selectedCandidateForDetails.interviewerName || "Not assigned"}</span>
-                    </div>
-                  </div>
-
-                  {selectedCandidateForDetails.interviewLink && (
-                    <div className="pt-1 border-t border-blue-200/60">
-                      <a
-                        href={selectedCandidateForDetails.interviewLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white font-semibold text-xs hover:bg-blue-700 shadow-2xs"
-                      >
-                        <span>Join Live Interview Meeting &rarr;</span>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Resume / Portfolio Link & Download */}
-              {selectedCandidateForDetails.resumeLink && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <span className="text-slate-500 block font-medium mb-1">
-                    Candidate Resume File / Document
-                  </span>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs text-slate-700 truncate max-w-sm">
-                      {selectedCandidateForDetails.resumeFileName || selectedCandidateForDetails.resumeLink}
-                    </span>
-                    <a
-                      href={selectedCandidateForDetails.resumeLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      download
-                      className="px-3 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-semibold text-xs flex items-center gap-1.5"
-                    >
-                      <span>Open / Download Resume</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {/* Screening Notes */}
-              <div>
-                <span className="text-slate-400 block font-medium mb-1">
-                  Recruiter Screening Notes
-                </span>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 leading-relaxed">
-                  {selectedCandidateForDetails.screeningNotes || "No notes entered yet."}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-              <button
-                onClick={() =>
-                  handleDeleteCandidate(
-                    selectedCandidateForDetails.id,
-                    selectedCandidateForDetails.fullName
-                  )
-                }
-                disabled={deletingCandidateId === selectedCandidateForDetails.id}
-                className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>
-                  {deletingCandidateId === selectedCandidateForDetails.id
-                    ? "Deleting..."
-                    : "Delete Candidate"}
-                </span>
-              </button>
-              <button
-                onClick={() => setSelectedCandidateForDetails(null)}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <CandidateDetailModal
+          candidate={selectedCandidateForDetails}
+          onClose={() => setSelectedCandidateForDetails(null)}
+          onDelete={handleDeleteCandidate}
+          jds={jds}
+        />
       )}
     </div>
   );
