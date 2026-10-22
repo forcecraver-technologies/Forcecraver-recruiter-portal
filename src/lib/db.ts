@@ -144,7 +144,8 @@ export async function getJDById(id: string): Promise<JobDescription | null> {
     try {
       const result = await pool.query(
         `SELECT id, company_name, job_title, skills, experience, location, 
-                salary_budget, job_description, posted_date, status, shift_timing, notes
+                salary_budget, job_description, posted_date, status, shift_timing, notes,
+                created_by, creator_id, creator_email
          FROM jobs WHERE id = $1 LIMIT 1`,
         [id]
       );
@@ -225,15 +226,41 @@ export async function updateJD(
   updates: Partial<JobDescription>
 ): Promise<JobDescription | null> {
   const pool = getPgPool();
-  if (pool && updates.status) {
+  if (pool) {
     try {
-      const pgStatus = updates.status === "Open" ? "ACTIVE" : "CLOSED";
-      await pool.query(`UPDATE jobs SET status = $1, updated_at = NOW() WHERE id = $2`, [
-        pgStatus,
-        id,
-      ]);
+      const skillsStr = updates.requiredSkills ? updates.requiredSkills.join(", ") : undefined;
+      const pgStatus = updates.status ? (updates.status === "Open" ? "ACTIVE" : "CLOSED") : undefined;
+
+      await pool.query(
+        `UPDATE jobs
+         SET job_title = COALESCE($1, job_title),
+             company_name = COALESCE($2, company_name),
+             skills = COALESCE($3, skills),
+             experience = COALESCE($4, experience),
+             location = COALESCE($5, location),
+             salary_budget = COALESCE($6, salary_budget),
+             job_description = COALESCE($7, job_description),
+             status = COALESCE($8, status),
+             shift_timing = COALESCE($9, shift_timing),
+             notes = COALESCE($10, notes),
+             updated_at = NOW()
+         WHERE id = $11`,
+        [
+          updates.title || null,
+          updates.client || null,
+          skillsStr || null,
+          updates.experienceRequired || null,
+          updates.location || null,
+          updates.budget || null,
+          updates.description || null,
+          pgStatus || null,
+          updates.department || null,
+          updates.notes || null,
+          id,
+        ]
+      );
     } catch (err) {
-      console.warn("PostgreSQL status update failed:", err);
+      console.warn("PostgreSQL updateJD failed:", err);
     }
   }
 
@@ -320,7 +347,7 @@ function mapPgCandidateToCandidate(row: any): Candidate {
     : [];
 
   let status: CandidateStatus = "Submitted";
-  const rawStatus = (row.screening_status || row.interview_status || "").trim();
+  const rawStatus = (row.interview_status || row.status || "").trim();
   if (rawStatus === "Screening" || rawStatus === "SCREENING") status = "Screening";
   else if (rawStatus === "Interview Scheduled" || rawStatus === "SCHEDULED") status = "Interview Scheduled";
   else if (rawStatus === "Offered" || rawStatus === "OFFERED") status = "Offered";

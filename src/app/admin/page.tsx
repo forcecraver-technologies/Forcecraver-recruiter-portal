@@ -215,7 +215,22 @@ export default function AdminPage() {
         window.location.href = "/login";
         return;
       }
-      setCurrentUser(meData.user);
+      const user = meData.user;
+      setCurrentUser(user);
+
+      const isManager =
+        user.email?.toLowerCase() !== "test@forcecraver.com" &&
+        (user.email?.toLowerCase() === "sarthak@forcecraver.com" ||
+          user.email?.toLowerCase() === "admin@forcecraver.com" ||
+          user.role === "DEVELOPER" ||
+          user.role === "ADMIN" ||
+          Boolean(user.isDeveloper));
+
+      if (!isManager) {
+        alert("Access restricted. The Admin Master Table is only accessible to Portal Administrators.");
+        window.location.href = "/";
+        return;
+      }
 
       const candData = await candRes.json();
       const jdData = await jdRes.json();

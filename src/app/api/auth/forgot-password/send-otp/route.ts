@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: `A 6-digit password reset code has been sent to ${rawEmail}`,
       email: rawEmail,
-      demoOtp: otp,
+      ...(process.env.NODE_ENV === "development" ? { demoOtp: otp } : {}),
     });
   } catch (err: any) {
     console.error("Forgot password send-otp error:", err);

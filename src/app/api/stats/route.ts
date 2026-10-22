@@ -10,6 +10,7 @@ export async function GET() {
       session &&
       !isTestRecruiter &&
       (session.email?.toLowerCase() === "sarthak@forcecraver.com" ||
+        session.email?.toLowerCase() === "admin@forcecraver.com" ||
         session.role === "DEVELOPER" ||
         session.role === "ADMIN" ||
         Boolean(session.isDeveloper));

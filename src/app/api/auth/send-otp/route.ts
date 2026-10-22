@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: `A 6-digit verification code (OTP) has been sent to ${rawEmail}`,
       email: rawEmail,
-      demoOtp: otp,
+      ...(process.env.NODE_ENV === "development" ? { demoOtp: otp } : {}),
       user: {
         id: user.id,
         name: user.name,

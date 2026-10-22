@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { X, Check, AlertCircle, User, Briefcase, IndianRupee, Clock, MapPin, Building, Sparkles, Search } from "lucide-react";
+import { X, Check, AlertCircle, User, Briefcase, IndianRupee, Clock, MapPin, Building, Sparkles, Search, FileText, Upload, Paperclip, Trash2, Loader2 } from "lucide-react";
 import { Candidate, JobDescription, Recruiter, ScreeningStatus } from "@/types";
 
 interface EditCandidateModalProps {
@@ -35,12 +35,15 @@ export default function EditCandidateModal({
     noticePeriodDays: candidate.noticePeriodDays || "",
     location: candidate.location || "",
     skills: candidate.skills?.join(", ") || "",
+    resumeLink: candidate.resumeLink || "",
+    resumeFileName: candidate.resumeFileName || "",
     screeningStatus: (candidate.screeningStatus || "Processing") as ScreeningStatus,
     status: candidate.status || "Submitted",
     screeningNotes: candidate.screeningNotes || "",
   });
 
   const [loading, setLoading] = useState(false);
+  const [uploadingResume, setUploadingResume] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -126,6 +129,36 @@ export default function EditCandidateModal({
     };
   }, [formData.skills, activeSelectedJd]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingResume(true);
+    setErrorMessage("");
+    try {
+      const data = new FormData();
+      data.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: data,
+      });
+      const result = await res.json();
+      if (result.success && result.url) {
+        setFormData((prev) => ({
+          ...prev,
+          resumeLink: result.url,
+          resumeFileName: result.fileName || file.name,
+        }));
+      } else {
+        setErrorMessage(result.error || "Failed to upload resume file.");
+      }
+    } catch {
+      setErrorMessage("Network error uploading resume file.");
+    } finally {
+      setUploadingResume(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -151,6 +184,8 @@ export default function EditCandidateModal({
           budget: formData.budget,
           expectedBudget: formData.budget,
           currentCtc: formData.budget,
+          resumeLink: formData.resumeLink,
+          resumeFileName: formData.resumeFileName,
           jdId: selectedJdId,
           recruiterName: recruiterName.trim(),
         }),
@@ -592,6 +627,87 @@ export default function EditCandidateModal({
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Resume Upload & Document Link Section */}
+            <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2">
+              <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                  Candidate Resume (Upload File or Document Link)
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">PDF, DOC, DOCX up to 10MB</span>
+              </label>
+
+              {formData.resumeLink ? (
+                <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs">
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <a
+                      href={formData.resumeLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-emerald-950 truncate underline hover:text-emerald-700"
+                    >
+                      {formData.resumeFileName || formData.resumeLink}
+                    </a>
+                    <span className="text-[10px] text-emerald-700 font-medium">✓ Attached</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, resumeLink: "", resumeFileName: "" })}
+                    className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-100 cursor-pointer"
+                    title="Remove resume"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="flex items-center justify-center gap-2 p-2.5 border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-lg bg-indigo-50/50 hover:bg-indigo-50 cursor-pointer transition-colors text-xs font-semibold text-indigo-700">
+                      {uploadingResume ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Uploading Resume...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 text-indigo-600" />
+                          <span>Upload New Resume File</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleFileUpload}
+                        disabled={uploadingResume}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <div>
+                    <div className="relative">
+                      <Paperclip className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                      <input
+                        type="url"
+                        placeholder="Or paste resume link (Drive, etc.)"
+                        value={formData.resumeLink}
+                        onChange={(e) => {
+                          const link = e.target.value;
+                          setFormData({
+                            ...formData,
+                            resumeLink: link,
+                            resumeFileName: link ? "Online Resume Link" : "",
+                          });
+                        }}
+                        className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-300 text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

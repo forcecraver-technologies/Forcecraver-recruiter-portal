@@ -3,8 +3,8 @@ import { findUserByEmail, createUser, clearUserOtpAndRecordLogin } from "@/lib/u
 import { signAuthToken, AUTH_COOKIE_NAME, RECRUITER_COOKIE_NAME } from "@/lib/auth";
 
 // Master Recruiter Admin Credentials
-const MASTER_ADMIN_EMAIL = "admin@forcecraver.com";
-const MASTER_ADMIN_PASS = "Fcadmin@123";
+const MASTER_ADMIN_EMAIL = (process.env.MASTER_ADMIN_EMAIL || "admin@forcecraver.com").toLowerCase();
+const MASTER_ADMIN_PASS = process.env.MASTER_ADMIN_PASSWORD || process.env.MASTER_ADMIN_PASS || "Fcadmin@123";
 
 export async function POST(req: NextRequest) {
   try {
