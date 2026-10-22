@@ -489,11 +489,7 @@ export async function getCandidates(filters?: {
 export async function createCandidate(
   data: Omit<Candidate, "id" | "submittedAt" | "updatedAt">
 ): Promise<Candidate> {
-  const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
-
-  // Generate candidate ID based on the mapped Open JD
-  const existingForJd = candidates.filter((c) => c.jdId === data.jdId);
-  const candIndex = String(existingForJd.length + 1).padStart(2, "0");
+  const pool = getPgPool();
 
   let jdPrefix = (data.jdId || "").trim();
   if (jdPrefix.startsWith("JD-")) {
@@ -502,7 +498,61 @@ export async function createCandidate(
     const cleanId = jdPrefix.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase();
     jdPrefix = cleanId ? `JD-${cleanId}` : `JD-GENERAL`;
   }
-  const nextId = `${jdPrefix}-C${candIndex}`;
+
+  // Generate guaranteed unique candidate ID using PostgreSQL records when available
+  let nextId = "";
+  if (pool) {
+    try {
+      const existingRes = await pool.query(
+        `SELECT id FROM candidates WHERE job_id = $1 OR id LIKE $2`,
+        [data.jdId || "", `${jdPrefix}-C%`]
+      );
+
+      let maxNum = 0;
+      for (const row of existingRes.rows) {
+        const match = (row.id || "").match(/-C(\d+)$/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+
+      // Check iteratively to guarantee no collision with existing candidates
+      let candNum = maxNum + 1;
+      while (true) {
+        const testId = `${jdPrefix}-C${String(candNum).padStart(2, "0")}`;
+        const check = await pool.query(`SELECT 1 FROM candidates WHERE id = $1 LIMIT 1`, [testId]);
+        if ((check.rowCount ?? 0) === 0) {
+          nextId = testId;
+          break;
+        }
+        candNum++;
+        if (candNum > maxNum + 500) {
+          nextId = `${jdPrefix}-C${Date.now().toString().slice(-4)}`;
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to query existing candidate IDs from PG:", e);
+    }
+  }
+
+  // Fallback to local store if pool was not available or nextId not set
+  if (!nextId) {
+    const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
+    const existingForJd = candidates.filter((c) => c.jdId === data.jdId || c.id?.startsWith(jdPrefix));
+    let maxNum = 0;
+    for (const c of existingForJd) {
+      const match = (c.id || "").match(/-C(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    }
+    nextId = `${jdPrefix}-C${String(maxNum + 1).padStart(2, "0")}`;
+  }
 
   // Ensure recruiter is registered if typed by name
   let recName = data.recruiterName?.trim() || "Independent Recruiter";
@@ -519,7 +569,6 @@ export async function createCandidate(
   const initialScreeningStatus = data.screeningStatus || "Processing";
 
   // Insert to PostgreSQL
-  const pool = getPgPool();
   if (pool) {
     try {
       const res = await pool.query(
@@ -566,12 +615,16 @@ export async function createCandidate(
       if (res.rows.length > 0) {
         const created = mapPgCandidateToCandidate(res.rows[0]);
         // Also keep local store in sync
-        candidates.unshift(created);
-        await writeJsonFile(CANDIDATES_FILE, candidates);
+        try {
+          const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
+          candidates.unshift(created);
+          await writeJsonFile(CANDIDATES_FILE, candidates);
+        } catch {}
         return created;
       }
     } catch (err) {
-      console.error("PostgreSQL insert candidate error, saving to local store:", err);
+      console.error("PostgreSQL insert candidate error:", err);
+      throw err;
     }
   }
 
@@ -585,6 +638,7 @@ export async function createCandidate(
     updatedAt: now,
   };
 
+  const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
   candidates.unshift(newCandidate);
   await writeJsonFile(CANDIDATES_FILE, candidates);
   return newCandidate;
