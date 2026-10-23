@@ -1290,7 +1290,10 @@ export default function AdminPage() {
           candidate={selectedCandidateForDetails}
           onClose={() => setSelectedCandidateForDetails(null)}
           onDelete={handleDeleteCandidate}
-          onEdit={(c) => setEditingCandidate(c)}
+          onEdit={(c) => {
+            setSelectedCandidateForDetails(null);
+            setEditingCandidate(c);
+          }}
           jds={jds}
         />
       )}

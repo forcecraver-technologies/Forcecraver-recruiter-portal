@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Check, AlertCircle, Briefcase, Plus } from "lucide-react";
 import { JobDescription } from "@/types";
 
@@ -29,6 +29,41 @@ export default function JDModal({ isOpen, onClose, onSuccess, initialData }: JDM
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        title: initialData.title || "",
+        client: initialData.client || "",
+        department: initialData.department || "Engineering",
+        location: initialData.location || "Bengaluru",
+        workMode: initialData.workMode || "Hybrid",
+        experienceRequired: initialData.experienceRequired || "3 - 6 Years",
+        budget: initialData.budget || "20 - 30 LPA",
+        openings: initialData.openings || 2,
+        status: initialData.status || "Open",
+        requiredSkills: Array.isArray(initialData.requiredSkills)
+          ? initialData.requiredSkills.join(", ")
+          : (initialData.requiredSkills || ""),
+        description: initialData.description || "",
+      });
+    } else {
+      setFormData({
+        title: "",
+        client: "",
+        department: "Engineering",
+        location: "Bengaluru",
+        workMode: "Hybrid",
+        experienceRequired: "3 - 6 Years",
+        budget: "20 - 30 LPA",
+        openings: 2,
+        status: "Open",
+        requiredSkills: "",
+        description: "",
+      });
+    }
+    setError("");
+  }, [initialData, isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,7 +75,12 @@ export default function JDModal({ isOpen, onClose, onSuccess, initialData }: JDM
       const isEdit = !!initialData?.id;
       const url = "/api/jds";
       const method = isEdit ? "PATCH" : "POST";
-      const body = isEdit ? { ...formData, id: initialData.id } : formData;
+      const skillsArray = formData.requiredSkills
+        ? formData.requiredSkills.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+      const body = isEdit
+        ? { ...formData, requiredSkills: skillsArray, id: initialData.id }
+        : { ...formData, requiredSkills: skillsArray };
 
       const res = await fetch(url, {
         method,

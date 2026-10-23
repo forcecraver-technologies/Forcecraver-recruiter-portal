@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { getRecruiters, createRecruiter, getCandidates } from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
 

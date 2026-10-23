@@ -7,8 +7,15 @@ export function getPgPool(): Pool | null {
   if (!dbUrl) return null;
 
   if (!pool) {
+    let cleanUrl = dbUrl;
+    if (cleanUrl.includes("sslmode=require") && !cleanUrl.includes("uselibpqcompat")) {
+      cleanUrl = cleanUrl.includes("?")
+        ? `${cleanUrl}&uselibpqcompat=true`
+        : `${cleanUrl}?uselibpqcompat=true`;
+    }
+
     pool = new Pool({
-      connectionString: dbUrl,
+      connectionString: cleanUrl,
       ssl: {
         rejectUnauthorized: false,
       },

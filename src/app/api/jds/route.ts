@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { getJDs, getJDById, createJD, updateJD, deleteJD } from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
 
@@ -150,6 +152,13 @@ export async function PATCH(req: NextRequest) {
         },
         { status: 403 }
       );
+    }
+
+    if (typeof updates.requiredSkills === "string") {
+      updates.requiredSkills = updates.requiredSkills
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean);
     }
 
     const updated = await updateJD(id, updates);

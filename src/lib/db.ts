@@ -228,37 +228,76 @@ export async function updateJD(
   const pool = getPgPool();
   if (pool) {
     try {
-      const skillsStr = updates.requiredSkills ? updates.requiredSkills.join(", ") : undefined;
-      const pgStatus = updates.status ? (updates.status === "Open" ? "ACTIVE" : "CLOSED") : undefined;
+      const setClauses: string[] = [];
+      const values: any[] = [];
+      let paramIdx = 1;
 
-      await pool.query(
-        `UPDATE jobs
-         SET job_title = COALESCE($1, job_title),
-             company_name = COALESCE($2, company_name),
-             skills = COALESCE($3, skills),
-             experience = COALESCE($4, experience),
-             location = COALESCE($5, location),
-             salary_budget = COALESCE($6, salary_budget),
-             job_description = COALESCE($7, job_description),
-             status = COALESCE($8, status),
-             shift_timing = COALESCE($9, shift_timing),
-             notes = COALESCE($10, notes),
-             updated_at = NOW()
-         WHERE id = $11`,
-        [
-          updates.title || null,
-          updates.client || null,
-          skillsStr || null,
-          updates.experienceRequired || null,
-          updates.location || null,
-          updates.budget || null,
-          updates.description || null,
-          pgStatus || null,
-          updates.department || null,
-          updates.notes || null,
-          id,
-        ]
-      );
+      if (updates.title !== undefined) {
+        setClauses.push(`job_title = $${paramIdx++}`);
+        values.push(updates.title);
+      }
+      if (updates.client !== undefined) {
+        setClauses.push(`company_name = $${paramIdx++}`);
+        values.push(updates.client);
+      }
+      if (updates.requiredSkills !== undefined) {
+        const skillsStr = Array.isArray(updates.requiredSkills)
+          ? updates.requiredSkills.join(", ")
+          : typeof updates.requiredSkills === "string"
+          ? updates.requiredSkills
+          : null;
+        setClauses.push(`skills = $${paramIdx++}`);
+        values.push(skillsStr);
+      }
+      if (updates.experienceRequired !== undefined) {
+        setClauses.push(`experience = $${paramIdx++}`);
+        values.push(updates.experienceRequired);
+      }
+      if (updates.location !== undefined) {
+        setClauses.push(`location = $${paramIdx++}`);
+        values.push(updates.location);
+      }
+      if (updates.budget !== undefined) {
+        setClauses.push(`salary_budget = $${paramIdx++}`);
+        values.push(updates.budget);
+      }
+      if (updates.description !== undefined) {
+        setClauses.push(`job_description = $${paramIdx++}`);
+        values.push(updates.description);
+      }
+      if (updates.status !== undefined) {
+        const pgStatus = updates.status === "Open" ? "ACTIVE" : "CLOSED";
+        setClauses.push(`status = $${paramIdx++}`);
+        values.push(pgStatus);
+      }
+      if (updates.department !== undefined) {
+        setClauses.push(`shift_timing = $${paramIdx++}`);
+        values.push(updates.department);
+      }
+      if (updates.notes !== undefined) {
+        setClauses.push(`notes = $${paramIdx++}`);
+        values.push(updates.notes);
+      }
+
+      if (setClauses.length > 0) {
+        setClauses.push(`updated_at = NOW()`);
+        values.push(id);
+        const idParam = `$${paramIdx}`;
+        const query = `UPDATE jobs SET ${setClauses.join(", ")} WHERE id = ${idParam} OR LOWER(TRIM(id)) = LOWER(TRIM(${idParam})) RETURNING *`;
+        const res = await pool.query(query, values);
+        if (res.rows.length > 0) {
+          const updated = mapPgJobToJD(res.rows[0]);
+          try {
+            const jds = await readJsonFile<JobDescription[]>(JDS_FILE, []);
+            const index = jds.findIndex((jd) => jd.id === id);
+            if (index !== -1) {
+              jds[index] = { ...jds[index], ...updates };
+              await writeJsonFile(JDS_FILE, jds);
+            }
+          } catch {}
+          return updated;
+        }
+      }
     } catch (err) {
       console.warn("PostgreSQL updateJD failed:", err);
     }
@@ -678,76 +717,154 @@ export async function updateCandidate(
   const pool = getPgPool();
   if (pool) {
     try {
-      const skillsStr = updates.skills ? (Array.isArray(updates.skills) ? updates.skills.join(", ") : updates.skills) : undefined;
-      const res = await pool.query(
-        `UPDATE candidates
-         SET name = COALESCE($1, name),
-             email = COALESCE($2, email),
-             phone = COALESCE($3, phone),
-             experience = COALESCE($4, experience),
-             location = COALESCE($5, location),
-             "current_role" = COALESCE($6, "current_role"),
-             current_company = COALESCE($7, current_company),
-             current_ctc = COALESCE($8, current_ctc),
-             expected_ctc = COALESCE($9, expected_ctc),
-             notice_period = COALESCE($10, notice_period),
-             resume_url = COALESCE($11, resume_url),
-             resume_file_name = COALESCE($12, resume_file_name),
-             skills = COALESCE($13, skills),
-             screening_notes = COALESCE($14, screening_notes),
-             screening_status = COALESCE($15, screening_status),
-             interview_status = COALESCE($16, interview_status),
-             interview_date = COALESCE($17, interview_date),
-             interview_time = COALESCE($18, interview_time),
-             interview_link = COALESCE($19, interview_link),
-             interviewer_name = COALESCE($20, interviewer_name),
-             interview_round = COALESCE($21, interview_round),
-             rating = COALESCE($22, rating),
-             job_id = COALESCE($23, job_id),
-             company_name = COALESCE($24, company_name),
-             job_title = COALESCE($25, job_title),
-             updated_at = NOW()
-         WHERE id = $26
-         RETURNING *`,
-        [
-          updates.fullName || null,
-          updates.email || null,
-          updates.phone || null,
-          updates.experienceYears || null,
-          updates.location || null,
-          updates.currentDesignation || null,
-          updates.currentCompany || null,
-          updates.currentCtc || null,
-          updates.expectedBudget || null,
-          updates.noticePeriodDays || null,
-          updates.resumeLink || null,
-          updates.resumeFileName || null,
-          skillsStr || null,
-          updates.screeningNotes || null,
-          updates.screeningStatus || null,
-          updates.status || null,
-          updates.interviewDate || null,
-          updates.interviewTime || null,
-          updates.interviewLink || null,
-          updates.interviewerName || null,
-          updates.interviewRound || null,
-          updates.rating || null,
-          updates.jdId || null,
-          updates.clientName || null,
-          updates.jdTitle || null,
-          id,
-        ]
-      );
-      if (res.rows.length > 0) {
-        const updated = mapPgCandidateToCandidate(res.rows[0]);
-        // Also update local store
-        const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
-        const index = candidates.findIndex((c) => c.id === id);
-        if (index !== -1) {
-          candidates[index] = { ...candidates[index], ...updates, updatedAt: new Date().toISOString() };
-          await writeJsonFile(CANDIDATES_FILE, candidates);
+      const setClauses: string[] = [];
+      const values: any[] = [];
+      let paramIdx = 1;
+
+      if (updates.fullName !== undefined) {
+        setClauses.push(`name = $${paramIdx++}`);
+        values.push(updates.fullName);
+        const nameParts = updates.fullName.trim().split(/\s+/);
+        setClauses.push(`first_name = $${paramIdx++}`);
+        values.push(nameParts[0] || "");
+        setClauses.push(`last_name = $${paramIdx++}`);
+        values.push(nameParts.slice(1).join(" ") || "");
+      }
+      if (updates.email !== undefined) {
+        setClauses.push(`email = $${paramIdx++}`);
+        values.push(updates.email);
+      }
+      if (updates.phone !== undefined) {
+        setClauses.push(`phone = $${paramIdx++}`);
+        values.push(updates.phone);
+      }
+      if (updates.experienceYears !== undefined) {
+        setClauses.push(`experience = $${paramIdx++}`);
+        values.push(updates.experienceYears);
+      }
+      if (updates.location !== undefined) {
+        setClauses.push(`location = $${paramIdx++}`);
+        values.push(updates.location);
+      }
+      if (updates.currentDesignation !== undefined) {
+        setClauses.push(`"current_role" = $${paramIdx++}`);
+        values.push(updates.currentDesignation);
+      }
+      if (updates.currentCompany !== undefined) {
+        setClauses.push(`current_company = $${paramIdx++}`);
+        values.push(updates.currentCompany);
+      }
+      if (updates.currentCtc !== undefined) {
+        setClauses.push(`current_ctc = $${paramIdx++}`);
+        values.push(updates.currentCtc);
+      }
+      if (updates.expectedBudget !== undefined) {
+        setClauses.push(`expected_ctc = $${paramIdx++}`);
+        values.push(updates.expectedBudget);
+      }
+      if (updates.noticePeriodDays !== undefined) {
+        setClauses.push(`notice_period = $${paramIdx++}`);
+        values.push(updates.noticePeriodDays);
+      }
+      if (updates.resumeLink !== undefined) {
+        setClauses.push(`resume_url = $${paramIdx++}`);
+        values.push(updates.resumeLink);
+      }
+      if (updates.resumeFileName !== undefined) {
+        setClauses.push(`resume_file_name = $${paramIdx++}`);
+        values.push(updates.resumeFileName);
+      }
+      if (updates.skills !== undefined) {
+        const skillsStr = Array.isArray(updates.skills)
+          ? updates.skills.join(", ")
+          : typeof updates.skills === "string"
+          ? updates.skills
+          : null;
+        setClauses.push(`skills = $${paramIdx++}`);
+        values.push(skillsStr);
+      }
+      if (updates.screeningNotes !== undefined) {
+        setClauses.push(`screening_notes = $${paramIdx++}`);
+        values.push(updates.screeningNotes);
+      }
+      if (updates.screeningStatus !== undefined) {
+        setClauses.push(`screening_status = $${paramIdx++}`);
+        values.push(updates.screeningStatus);
+      }
+      if (updates.status !== undefined) {
+        setClauses.push(`interview_status = $${paramIdx++}`);
+        values.push(updates.status);
+      }
+      if (updates.interviewDate !== undefined) {
+        setClauses.push(`interview_date = $${paramIdx++}`);
+        values.push(updates.interviewDate || null);
+      }
+      if (updates.interviewTime !== undefined) {
+        setClauses.push(`interview_time = $${paramIdx++}`);
+        values.push(updates.interviewTime || null);
+      }
+      if (updates.interviewLink !== undefined) {
+        setClauses.push(`interview_link = $${paramIdx++}`);
+        values.push(updates.interviewLink || null);
+      }
+      if (updates.interviewerName !== undefined) {
+        setClauses.push(`interviewer_name = $${paramIdx++}`);
+        values.push(updates.interviewerName || null);
+      }
+      if (updates.interviewRound !== undefined) {
+        setClauses.push(`interview_round = $${paramIdx++}`);
+        values.push(updates.interviewRound || null);
+      }
+      if (updates.rating !== undefined) {
+        setClauses.push(`rating = $${paramIdx++}`);
+        values.push(updates.rating ? Number(updates.rating) : null);
+      }
+      if (updates.jdId !== undefined) {
+        setClauses.push(`job_id = $${paramIdx++}`);
+        values.push(updates.jdId);
+      }
+      if (updates.clientName !== undefined) {
+        setClauses.push(`company_name = $${paramIdx++}`);
+        values.push(updates.clientName);
+      }
+      if (updates.jdTitle !== undefined) {
+        setClauses.push(`job_title = $${paramIdx++}`);
+        values.push(updates.jdTitle);
+      }
+      if (updates.recruiterName !== undefined) {
+        setClauses.push(`sourced_by = $${paramIdx++}`);
+        values.push(updates.recruiterName);
+        setClauses.push(`screened_by = $${paramIdx++}`);
+        values.push(updates.recruiterName);
+      }
+      if (updates.recruiterId !== undefined) {
+        setClauses.push(`recruiter_id = $${paramIdx++}`);
+        values.push(updates.recruiterId);
+      }
+      if (updates.recruiterEmail !== undefined) {
+        setClauses.push(`recruiter_email = $${paramIdx++}`);
+        values.push(updates.recruiterEmail);
+      }
+
+      if (setClauses.length > 0) {
+        setClauses.push(`updated_at = NOW()`);
+        values.push(id);
+        const idParam = `$${paramIdx}`;
+        const query = `UPDATE candidates SET ${setClauses.join(", ")} WHERE id = ${idParam} OR LOWER(TRIM(id)) = LOWER(TRIM(${idParam})) RETURNING *`;
+        const res = await pool.query(query, values);
+        if (res.rows.length > 0) {
+          const updated = mapPgCandidateToCandidate(res.rows[0]);
+          // Keep local store in sync
+          try {
+            const candidates = await readJsonFile<Candidate[]>(CANDIDATES_FILE, []);
+            const index = candidates.findIndex((c) => c.id === id);
+            if (index !== -1) {
+              candidates[index] = { ...candidates[index], ...updates, updatedAt: new Date().toISOString() };
+              await writeJsonFile(CANDIDATES_FILE, candidates);
+            }
+          } catch {}
+          return updated;
         }
-        return updated;
       }
     } catch (err) {
       console.warn("PostgreSQL updateCandidate failed:", err);

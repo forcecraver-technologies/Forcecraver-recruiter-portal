@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { getDashboardStats, getJDs, getCandidates } from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
 

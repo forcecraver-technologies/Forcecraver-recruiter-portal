@@ -34,7 +34,7 @@ export default function EditCandidateModal({
     budget: candidate.expectedBudget || candidate.currentCtc || "",
     noticePeriodDays: candidate.noticePeriodDays || "",
     location: candidate.location || "",
-    skills: candidate.skills?.join(", ") || "",
+    skills: Array.isArray(candidate.skills) ? candidate.skills.join(", ") : (candidate.skills || ""),
     resumeLink: candidate.resumeLink || "",
     resumeFileName: candidate.resumeFileName || "",
     screeningStatus: (candidate.screeningStatus || "Processing") as ScreeningStatus,
@@ -46,6 +46,32 @@ export default function EditCandidateModal({
   const [uploadingResume, setUploadingResume] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (candidate) {
+      setSelectedJdId(candidate.jdId || "");
+      setRecruiterName(candidate.recruiterName || "");
+      setFormData({
+        fullName: candidate.fullName || "",
+        email: candidate.email || "",
+        phone: candidate.phone || "",
+        currentCompany: candidate.currentCompany || "",
+        currentDesignation: candidate.currentDesignation || "",
+        experienceYears: candidate.experienceYears || "",
+        budget: candidate.expectedBudget || candidate.currentCtc || "",
+        noticePeriodDays: candidate.noticePeriodDays || "",
+        location: candidate.location || "",
+        skills: Array.isArray(candidate.skills) ? candidate.skills.join(", ") : (candidate.skills || ""),
+        resumeLink: candidate.resumeLink || "",
+        resumeFileName: candidate.resumeFileName || "",
+        screeningStatus: (candidate.screeningStatus || "Processing") as ScreeningStatus,
+        status: candidate.status || "Submitted",
+        screeningNotes: candidate.screeningNotes || "",
+      });
+      setErrorMessage("");
+      setSuccessMessage("");
+    }
+  }, [candidate, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
